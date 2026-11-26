@@ -213,6 +213,7 @@
 				33CC10EB2044A3C60003C045 /* Resources */,
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
+				A1B2C3D4E5F60718293A4B5C /* Bundle Sidecar Binary */,
 			);
 			buildRules = (
 			);
@@ -318,6 +319,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "echo \"$PRODUCT_NAME.app\" > \"$PROJECT_DIR\"/Flutter/ephemeral/.app_filename && \"$FLUTTER_ROOT\"/packages/flutter_tools/bin/macos_assemble.sh embed\n";
+		};
+		A1B2C3D4E5F60718293A4B5C /* Bundle Sidecar Binary */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle Sidecar Binary";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "SIDECAR=\"${PROJECT_DIR}/Runner/Resources/versionradar-server\"\nif [ -f \"$SIDECAR\" ]; then\n  DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/versionradar-server\"\n  mkdir -p \"$(dirname \"$DEST\")\"\n  cp -f \"$SIDECAR\" \"$DEST\"\n  chmod +x \"$DEST\"\nfi\n";
 		};
 		33CC111E2044C6BF0003C045 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;

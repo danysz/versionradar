@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"encoding/base64"
+	"io/fs"
 	"net/http"
 	"os"
 	"strings"
@@ -18,6 +19,10 @@ import (
 func TestBrandingAndNoOpenFlag(t *testing.T) {
 	if len(server.BrandLogoSVG) == 0 || !bytes.Contains(server.BrandLogoSVG, []byte("<svg")) {
 		t.Fatalf("expected embedded BrandLogoSVG to contain SVG markup, got %d bytes", len(server.BrandLogoSVG))
+	}
+	pngMagic := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
+	if len(server.BrandFaviconPNG) == 0 || !bytes.HasPrefix(server.BrandFaviconPNG, pngMagic) {
+		t.Fatalf("expected embedded BrandFaviconPNG to start with PNG magic bytes, got %d bytes", len(server.BrandFaviconPNG))
 	}
 
 	t.Setenv("VR_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString([]byte(strings.Repeat("k", 32))))
@@ -72,7 +77,7 @@ func TestBrandingAndNoOpenFlag(t *testing.T) {
 		t.Fatalf("OnServe failed: %v", err)
 	}
 
-	for _, path := range []string{"/_/images/logo.svg", "/favicon.ico"} {
+	for _, path := range []string{"/_/images/logo.svg", "/_/images/logo_white.svg", "/favicon.ico"} {
 		status, hdr, body := doGET(t, handler, path)
 		if status != http.StatusOK {
 			t.Fatalf("GET %s expected 200, got %d: %s", path, status, body)
@@ -84,4 +89,112 @@ func TestBrandingAndNoOpenFlag(t *testing.T) {
 			t.Fatalf("GET %s body did not match BrandLogoSVG", path)
 		}
 	}
+
+	for _, path := range []string{"/_/images/favicon.png", "/_/images/favicon_prod.png"} {
+		status, hdr, body := doGET(t, handler, path)
+		if status != http.StatusOK {
+			t.Fatalf("GET %s expected 200, got %d: %s", path, status, body)
+		}
+		if ct := hdr.Get("Content-Type"); !strings.Contains(ct, "image/png") {
+			t.Fatalf("GET %s expected image/png Content-Type, got %q", path, ct)
+		}
+		if body != string(server.BrandFaviconPNG) {
+			t.Fatalf("GET %s body did not match BrandFaviconPNG", path)
+		}
+	}
+
+	t.Run("UIExtension script is served at /_/extensions.js", func(t *testing.T) {
+		if pbui.DistDirFS == nil {
+			t.Skip("PocketBase ui.DistDirFS is nil")
+		}
+		status, hdr, body := doGET(t, handler, "/_/extensions.js")
+		if status != http.StatusOK {
+			t.Fatalf("GET /_/extensions.js expected 200, got %d: %s", status, body)
+		}
+		if ct := hdr.Get("Content-Type"); !strings.Contains(ct, "text/javascript") {
+			t.Fatalf("GET /_/extensions.js expected text/javascript Content-Type, got %q", ct)
+		}
+		if !strings.Contains(body, `window.app.store.favicon = "./images/favicon.png"`) {
+			t.Fatalf("expected /_/extensions.js to set favicon, got %q", body)
+		}
+		if !strings.Contains(body, `mount:pageInstaller`) || !strings.Contains(body, `Setup your VersionRadar instance`) {
+			t.Fatalf("expected /_/extensions.js to handle mount:pageInstaller title, got %q", body)
+		}
+	})
+
+	t.Run("ui.DistDirFS serves index.html with VersionRadar title and favicon", func(t *testing.T) {
+		if pbui.DistDirFS == nil {
+			t.Skip("PocketBase ui.DistDirFS is nil")
+		}
+		rawIndex, err := fs.ReadFile(pbui.DistDirFS, "index.html")
+		if err != nil {
+			t.Fatalf("fs.ReadFile(ui.DistDirFS, index.html) failed: %v", err)
+		}
+		statInfo, err := fs.Stat(pbui.DistDirFS, "index.html")
+		if err != nil {
+			t.Fatalf("fs.Stat(ui.DistDirFS, index.html) failed: %v", err)
+		}
+		if statInfo.Size() != int64(len(rawIndex)) {
+			t.Fatalf("expected Stat().Size()=%d to match read length %d", statInfo.Size(), len(rawIndex))
+		}
+		indexStr := string(rawIndex)
+		if !strings.Contains(indexStr, "<title>VersionRadar</title>") {
+			t.Fatalf("expected index.html to contain <title>VersionRadar</title>, got %q", indexStr)
+		}
+		if strings.Contains(indexStr, "<title>PocketBase</title>") {
+			t.Fatalf("expected index.html not to contain <title>PocketBase</title>, got %q", indexStr)
+		}
+		if !strings.Contains(indexStr, `<link rel="icon" type="image/png" href="./images/favicon.png">`) {
+			t.Fatalf("expected index.html to inject favicon link, got %q", indexStr)
+		}
+
+		status, _, body := doGET(t, handler, "/_/")
+		if status != http.StatusOK {
+			t.Fatalf("GET /_/ expected 200, got %d: %s", status, body)
+		}
+		if !strings.Contains(body, "<title>VersionRadar</title>") {
+			t.Fatalf("expected GET /_/ response to contain <title>VersionRadar</title>, got %q", body)
+		}
+	})
+
+	t.Run("ui.DistDirFS serves installer script without PocketBase instance", func(t *testing.T) {
+		if pbui.DistDirFS == nil {
+			t.Skip("PocketBase ui.DistDirFS is nil")
+		}
+		matches, err := fs.Glob(pbui.DistDirFS, "assets/pageInstaller-*.js")
+		if err != nil {
+			t.Fatalf("fs.Glob failed: %v", err)
+		}
+		if len(matches) == 0 {
+			t.Fatal("expected at least one assets/pageInstaller-*.js file in ui.DistDirFS")
+		}
+		for _, match := range matches {
+			rawJS, err := fs.ReadFile(pbui.DistDirFS, match)
+			if err != nil {
+				t.Fatalf("fs.ReadFile(%q) failed: %v", match, err)
+			}
+			statInfo, err := fs.Stat(pbui.DistDirFS, match)
+			if err != nil {
+				t.Fatalf("fs.Stat(%q) failed: %v", match, err)
+			}
+			if statInfo.Size() != int64(len(rawJS)) {
+				t.Fatalf("expected Stat(%q).Size()=%d to match read length %d", match, statInfo.Size(), len(rawJS))
+			}
+			jsStr := string(rawJS)
+			if strings.Contains(jsStr, "PocketBase instance") {
+				t.Fatalf("expected %s not to contain 'PocketBase instance'", match)
+			}
+			if !strings.Contains(jsStr, "Setup your VersionRadar instance") {
+				t.Fatalf("expected %s to contain 'Setup your VersionRadar instance'", match)
+			}
+
+			status, _, body := doGET(t, handler, "/_/"+match)
+			if status != http.StatusOK {
+				t.Fatalf("GET /_/%s expected 200, got %d", match, status)
+			}
+			if strings.Contains(body, "PocketBase instance") || !strings.Contains(body, "Setup your VersionRadar instance") {
+				t.Fatalf("GET /_/%s returned unbranded installer script", match)
+			}
+		}
+	})
 }

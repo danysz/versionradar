@@ -1,10 +1,23 @@
+import 'package:flutter/foundation.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const apiUrl = String.fromEnvironment(
-  'API_URL',
-  defaultValue: 'http://127.0.0.1:8090',
-);
+const _envApiUrl = String.fromEnvironment('API_URL');
+
+/// Resolves the backend base URL: explicit `--dart-define=API_URL=...` first,
+/// current browser origin on web, or `http://127.0.0.1:8090` on desktop/tests.
+String resolveApiUrl({bool isWeb = kIsWeb, Uri? baseUri}) {
+  if (_envApiUrl.isNotEmpty) return _envApiUrl;
+  if (isWeb) {
+    final uri = baseUri ?? Uri.base;
+    if (uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      return uri.origin;
+    }
+  }
+  return 'http://127.0.0.1:8090';
+}
+
+final String apiUrl = resolveApiUrl();
 
 late final PocketBase pb;
 

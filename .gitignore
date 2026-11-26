@@ -5,6 +5,7 @@ backend/server/dist/*
 !backend/server/dist/index.html
 client/build/
 client/.dart_tool/
+client/macos/Runner/Resources/versionradar-server
 .env
 *.p8
 client_secret*.json

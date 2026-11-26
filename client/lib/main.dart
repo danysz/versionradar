@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'pages/login_page.dart';
 import 'pages/radars_page.dart';
+import 'sidecar.dart';
 import 'theme.dart';
 
 const brandNavy = AppColors.navy;
@@ -10,6 +11,7 @@ const brandTeal = AppColors.teal;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ensureSidecarStarted(baseUrl: apiUrl);
   await initApi();
   runApp(const VersionRadarApp());
 }
