@@ -105,11 +105,14 @@ func TestWebhookPlansLocalhostAndPublicURLFlag(t *testing.T) {
 	})
 
 	t.Run("public-url flag is registered on app.RootCmd and applied on serve", func(t *testing.T) {
-		t.Chdir(t.TempDir())
 		t.Setenv("VR_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString([]byte(strings.Repeat("k", 32))))
 		t.Setenv("VR_DEV_PASSWORD_AUTH", "1")
 		t.Setenv("VR_GOOGLE_CLIENT_ID", "test-client-id")
 		t.Setenv("VR_GOOGLE_CLIENT_SECRET", "test-client-secret")
+
+		origArgs := os.Args
+		os.Args = []string{"versionradar", "--dir=" + t.TempDir()}
+		t.Cleanup(func() { os.Args = origArgs })
 
 		app, svc, err := server.New(server.Options{})
 		if err != nil {

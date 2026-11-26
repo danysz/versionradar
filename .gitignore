@@ -1,4 +1,4 @@
-backend/pb_data/
+**/pb_data/
 backend/bin/
 backend/server/dist/*
 !backend/server/dist/index.html

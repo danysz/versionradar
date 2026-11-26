@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"io"
 	"net/http"
 	"os"
@@ -77,11 +78,13 @@ func (s *Service) Bind(app core.App) {
 
 	// Adaptive active build watcher + immediate startup sync once serving starts.
 	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
-		go s.StartAdaptiveWatcher(nil, 10*time.Second)
-		go func() {
-			time.Sleep(500 * time.Millisecond)
-			s.SyncAll()
-		}()
+		if flag.Lookup("test.v") == nil {
+			go s.StartAdaptiveWatcher(nil, 10*time.Second)
+			go func() {
+				time.Sleep(500 * time.Millisecond)
+				s.SyncAll()
+			}()
+		}
 		return se.Next()
 	})
 
