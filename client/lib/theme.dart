@@ -176,6 +176,36 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.account_tree_outlined,
     Color(0xFF2DD4BF),
   ),
+  'gcp_cloudrun' => const ProviderMeta(
+    'Cloud Run',
+    'Live revisions & traffic routing',
+    Icons.cloud_queue_rounded,
+    Color(0xFF38BDF8),
+  ),
+  'testflight' => const ProviderMeta(
+    'TestFlight',
+    'iOS beta builds & review',
+    Icons.flight_takeoff_rounded,
+    Color(0xFF0EA5E9),
+  ),
+  'slack' => const ProviderMeta(
+    'Slack',
+    'Channel deployment & drift alerts',
+    Icons.tag_rounded,
+    Color(0xFFE01E5A),
+  ),
+  'discord' => const ProviderMeta(
+    'Discord',
+    'Rich embed deployment alerts',
+    Icons.forum_outlined,
+    Color(0xFF5865F2),
+  ),
+  'telegram' => const ProviderMeta(
+    'Telegram',
+    'Instant bot deployment alerts',
+    Icons.send_rounded,
+    Color(0xFF26A5E4),
+  ),
   _ => ProviderMeta(
     name.isEmpty ? 'Unknown' : name,
     'Custom plugin',
