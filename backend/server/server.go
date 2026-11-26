@@ -16,6 +16,14 @@ import (
 	"github.com/danysz/versionradar/backend/plugins/providers/gcp"
 	"github.com/danysz/versionradar/backend/plugins/providers/googleplay"
 	"github.com/danysz/versionradar/backend/plugins/providers/heroku"
+	"github.com/danysz/versionradar/backend/plugins/providers/githubactions"
+	"github.com/danysz/versionradar/backend/plugins/providers/gitlabci"
+	"github.com/danysz/versionradar/backend/plugins/providers/httpprobe"
+	"github.com/danysz/versionradar/backend/plugins/providers/neon"
+	"github.com/danysz/versionradar/backend/plugins/providers/netlify"
+	"github.com/danysz/versionradar/backend/plugins/providers/render"
+	"github.com/danysz/versionradar/backend/plugins/providers/supabase"
+	"github.com/danysz/versionradar/backend/plugins/providers/vercel"
 	"github.com/danysz/versionradar/backend/sources/git"
 	"github.com/danysz/versionradar/backend/sources/github"
 	"github.com/danysz/versionradar/backend/sources/gitlab"
@@ -41,6 +49,14 @@ func CommunityProviders() []core.ProviderPlugin {
 		googleplay.Plugin{},
 		appstore.Plugin{},
 		heroku.Plugin{},
+		httpprobe.Plugin{},
+		vercel.Plugin{},
+		netlify.Plugin{},
+		githubactions.Plugin{},
+		gitlabci.Plugin{},
+		render.Plugin{},
+		supabase.Plugin{},
+		neon.Plugin{},
 	}
 }
 
