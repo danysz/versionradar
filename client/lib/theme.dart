@@ -152,6 +152,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.layers_outlined,
     Color(0xFF00C7B7),
   ),
+  'github_actions' => const ProviderMeta(
+    'GitHub Actions',
+    'CI/CD workflow runs',
+    Icons.play_circle_outline_rounded,
+    Color(0xFF60A5FA),
+  ),
   'gcp' => const ProviderMeta(
     'Google Cloud',
     'Cloud Build pipelines',
