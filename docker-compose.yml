@@ -2,7 +2,7 @@ services:
   versionradar:
     build: .
     ports:
-      - "8090:8090"
+      - "18899:18899"
     environment:
       VR_ENCRYPTION_KEY: ${VR_ENCRYPTION_KEY:?Generate with openssl rand -base64 32}
       VR_ADMIN_EMAIL: ${VR_ADMIN_EMAIL:-}

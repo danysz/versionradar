@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 const _envApiUrl = String.fromEnvironment('API_URL');
 
 /// Resolves the backend base URL: explicit `--dart-define=API_URL=...` first,
-/// current browser origin on web, or `http://127.0.0.1:8090` on desktop/tests.
+/// current browser origin on web, or `http://127.0.0.1:18899` on desktop/tests.
 String resolveApiUrl({bool isWeb = kIsWeb, Uri? baseUri}) {
   if (_envApiUrl.isNotEmpty) return _envApiUrl;
   if (isWeb) {
@@ -14,7 +14,7 @@ String resolveApiUrl({bool isWeb = kIsWeb, Uri? baseUri}) {
       return uri.origin;
     }
   }
-  return 'http://127.0.0.1:8090';
+  return 'http://127.0.0.1:18899';
 }
 
 final String apiUrl = resolveApiUrl();

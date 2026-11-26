@@ -61,7 +61,7 @@ export VR_ENCRYPTION_KEY=$(openssl rand -base64 32)
 docker compose up -d
 ```
 
-Open `http://localhost:8090` in your browser. The embedded Flutter Web client will load immediately, pointing to the local PocketBase backend.
+Open `http://localhost:18899` in your browser. The embedded Flutter Web client will load immediately, pointing to the local PocketBase backend.
 
 ---
 
@@ -83,12 +83,12 @@ export VR_ADMIN_PASSWORD=password123456
 
 go run ./cmd/server serve
 ```
-The REST API and PocketBase Admin UI will run at `http://127.0.0.1:8090`.
+The REST API and PocketBase Admin UI will run at `http://127.0.0.1:18899`.
 
 #### 2. Flutter Client (Web, macOS, iOS, Android)
 ```bash
 cd client
-flutter run -d chrome --dart-define=API_URL=http://127.0.0.1:8090
+flutter run -d chrome --dart-define=API_URL=http://127.0.0.1:18899
 ```
 
 ---

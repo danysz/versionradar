@@ -4,7 +4,7 @@
 library;
 
 /// Default local PocketBase URL used by desktop builds when `API_URL` is unset.
-const defaultLocalApiUrl = 'http://127.0.0.1:8090';
+const defaultLocalApiUrl = 'http://127.0.0.1:18899';
 
 /// Returns the health-check URI (`<base>/api/health`) for [baseUrl].
 Uri sidecarHealthUri(String baseUrl) {
@@ -19,7 +19,7 @@ String sidecarListenAddress(String baseUrl) {
   final host = parsed.host.isNotEmpty ? parsed.host : '127.0.0.1';
   final port = parsed.hasPort
       ? parsed.port
-      : (parsed.scheme == 'https' ? 443 : 8090);
+      : (parsed.scheme == 'https' ? 443 : 18899);
   final formattedHost = host.contains(':') ? '[$host]' : host;
   return '$formattedHost:$port';
 }

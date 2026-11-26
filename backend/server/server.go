@@ -83,8 +83,118 @@ func CommunitySources() []core.SourcePlugin {
 	}
 }
 
+// DefaultHTTPAddr is the default TCP listen address when serving locally.
+const DefaultHTTPAddr = "127.0.0.1:18899"
+
+// ResolveDefaultHTTPAddr resolves the HTTP listen address for `serve` when --http is not provided.
+// Precedence: VR_HTTP (prepending 127.0.0.1: if port-only), then PORT (as 127.0.0.1:$PORT), then DefaultHTTPAddr.
+func ResolveDefaultHTTPAddr(getenv func(string) string) string {
+	if getenv == nil {
+		getenv = os.Getenv
+	}
+	if vrHTTP := strings.TrimSpace(getenv("VR_HTTP")); vrHTTP != "" {
+		if isPortOnly(vrHTTP) {
+			return "127.0.0.1:" + vrHTTP
+		}
+		return vrHTTP
+	}
+	if port := strings.TrimSpace(getenv("PORT")); port != "" {
+		return "127.0.0.1:" + strings.TrimPrefix(port, ":")
+	}
+	return DefaultHTTPAddr
+}
+
+func isPortOnly(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// EnsureServeHTTPArg injects --http=<resolved> into args when the `serve` subcommand
+// is invoked without an explicit --http flag.
+func EnsureServeHTTPArg(args []string, getenv func(string) string) []string {
+	if len(args) < 2 {
+		return args
+	}
+
+	rootValueFlags := map[string]bool{
+		"--dir":           true,
+		"--encryptionEnv": true,
+		"--queryTimeout":  true,
+		"--public-url":    true,
+	}
+	serveValueFlags := map[string]bool{
+		"--http":    true,
+		"--https":   true,
+		"--origins": true,
+	}
+
+	serveIdx := -1
+	for i := 1; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			break
+		}
+		if strings.HasPrefix(arg, "-") {
+			if rootValueFlags[arg] {
+				i++
+			}
+			continue
+		}
+		if arg == "serve" {
+			serveIdx = i
+		}
+		break
+	}
+	if serveIdx == -1 {
+		return args
+	}
+
+	hasDomainArg := false
+	for i := serveIdx + 1; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			break
+		}
+		if arg == "--http" || strings.HasPrefix(arg, "--http=") {
+			return args
+		}
+		if arg == "-h" || arg == "--help" {
+			return args
+		}
+		if strings.HasPrefix(arg, "-") {
+			if rootValueFlags[arg] || serveValueFlags[arg] {
+				i++
+			}
+			continue
+		}
+		hasDomainArg = true
+	}
+
+	if getenv == nil {
+		getenv = os.Getenv
+	}
+	if hasDomainArg && strings.TrimSpace(getenv("VR_HTTP")) == "" && strings.TrimSpace(getenv("PORT")) == "" {
+		return args
+	}
+
+	resolved := ResolveDefaultHTTPAddr(getenv)
+	out := make([]string, 0, len(args)+1)
+	out = append(out, args[:serveIdx+1]...)
+	out = append(out, "--http="+resolved)
+	out = append(out, args[serveIdx+1:]...)
+	return out
+}
+
 // New constructs a configured PocketBase app + core.Service ready to call app.Start().
 func New(opts Options) (*pocketbase.PocketBase, *core.Service, error) {
+	os.Args = EnsureServeHTTPArg(os.Args, os.Getenv)
 	app := pocketbase.New()
 	var publicURLFlag string
 	var noOpenFlag bool
@@ -147,7 +257,7 @@ func New(opts Options) (*pocketbase.PocketBase, *core.Service, error) {
 }
 
 func resolveBrowseURL(app pbcore.App, se *pbcore.ServeEvent, publicURL string) string {
-	base := "http://127.0.0.1:8090"
+	base := "http://" + DefaultHTTPAddr
 	if se != nil && se.Server != nil && se.Server.Addr != "" {
 		host, port, err := net.SplitHostPort(se.Server.Addr)
 		if err == nil {

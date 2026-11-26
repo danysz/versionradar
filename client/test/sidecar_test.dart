@@ -56,24 +56,25 @@ void main() {
     });
 
     test('falls back to loopback on desktop', () {
-      expect(resolveApiUrl(isWeb: false), 'http://127.0.0.1:8090');
+      expect(resolveApiUrl(isWeb: false), 'http://127.0.0.1:18899');
     });
   });
 
   group('sidecar helpers', () {
     test('computes health URI, listen address, and local target check', () {
       expect(
-        sidecarHealthUri('http://127.0.0.1:8090').toString(),
-        'http://127.0.0.1:8090/api/health',
+        sidecarHealthUri('http://127.0.0.1:18899').toString(),
+        'http://127.0.0.1:18899/api/health',
       );
       expect(
         sidecarHealthUri('http://localhost:9090/').toString(),
         'http://localhost:9090/api/health',
       );
-      expect(sidecarListenAddress('http://127.0.0.1:8090'), '127.0.0.1:8090');
+      expect(sidecarListenAddress('http://127.0.0.1:18899'), '127.0.0.1:18899');
+      expect(sidecarListenAddress('http://127.0.0.1'), '127.0.0.1:18899');
       expect(sidecarListenAddress('http://localhost:9100'), 'localhost:9100');
-      expect(isLocalSidecarTarget('http://127.0.0.1:8090'), isTrue);
-      expect(isLocalSidecarTarget('http://localhost:8090'), isTrue);
+      expect(isLocalSidecarTarget('http://127.0.0.1:18899'), isTrue);
+      expect(isLocalSidecarTarget('http://localhost:18899'), isTrue);
       expect(isLocalSidecarTarget('https://radar.example.com'), isFalse);
     });
 
@@ -147,7 +148,7 @@ void main() {
         },
       );
 
-      await manager.ensureStarted(baseUrl: 'http://127.0.0.1:8090');
+      await manager.ensureStarted(baseUrl: 'http://127.0.0.1:18899');
       expect(started, isFalse);
       expect(manager.isRunning, isFalse);
       expect(manager.lastError, isNull);
@@ -165,7 +166,7 @@ void main() {
           return false;
         },
       );
-      await webManager.ensureStarted(baseUrl: 'http://127.0.0.1:8090');
+      await webManager.ensureStarted(baseUrl: 'http://127.0.0.1:18899');
       expect(probed, isFalse);
 
       final remoteManager = SidecarManager(
@@ -216,7 +217,7 @@ void main() {
         },
       );
 
-      await manager.ensureStarted(baseUrl: 'http://127.0.0.1:8090');
+      await manager.ensureStarted(baseUrl: 'http://127.0.0.1:18899');
       expect(
         startedExe,
         '/Applications/VersionRadar.app/Contents/Resources/versionradar-server',
@@ -224,7 +225,7 @@ void main() {
       expect(createdDir, '/Users/alice/Library/Application Support/VersionRadar/pb_data');
       expect(startedArgs, [
         'serve',
-        '--http=127.0.0.1:8090',
+        '--http=127.0.0.1:18899',
         '--dir=/Users/alice/Library/Application Support/VersionRadar/pb_data',
         '--no-open',
       ]);
@@ -253,7 +254,7 @@ void main() {
       );
 
       await manager.ensureStarted(
-        baseUrl: 'http://127.0.0.1:8090',
+        baseUrl: 'http://127.0.0.1:18899',
         healthTimeout: const Duration(milliseconds: 150),
       );
       expect(manager.isRunning, isFalse);
