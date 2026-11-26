@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # build-standalone.sh — Build Flutter web UI and embed into standalone Go binary
-# Usage: [TARGET_OS=linux] [TARGET_ARCH=amd64] ./scripts/build-standalone.sh
+# Usage: [VERSION=v1.0.0] [TARGET_OS=linux] [TARGET_ARCH=amd64] ./scripts/build-standalone.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -34,6 +34,10 @@ mkdir -p "${DIST_DIR}"
 rm -rf "${DIST_DIR:?}"/*
 cp -r "${REPO_DIR}/client/build/web"/* "${DIST_DIR}/"
 
+VERSION="${VERSION:-$(git -C "${REPO_DIR}" describe --tags --always 2>/dev/null || echo "v0.1.0")}"
+VERSION="${VERSION#backend/}"
+[[ "${VERSION}" =~ ^v ]] || VERSION="v${VERSION}"
+
 TARGET_OS="${TARGET_OS:-$(go env GOOS)}"
 TARGET_ARCH="${TARGET_ARCH:-$(go env GOARCH)}"
 EXT=""
@@ -41,18 +45,24 @@ if [[ "${TARGET_OS}" == "windows" ]]; then
   EXT=".exe"
 fi
 
-OUTPUT_REL="bin/versionradar${EXT}"
-OUTPUT_ABS="${REPO_DIR}/backend/${OUTPUT_REL}"
+BUILD_DIR="${REPO_DIR}/build"
+mkdir -p "${BUILD_DIR}"
 
-echo "==> 3. Building Go standalone binary (${TARGET_OS}/${TARGET_ARCH})..."
-mkdir -p "${REPO_DIR}/backend/bin"
+VERSIONED_NAME="versionradar-${VERSION}-${TARGET_OS}-${TARGET_ARCH}${EXT}"
+OUTPUT_ABS="${BUILD_DIR}/${VERSIONED_NAME}"
+
+echo "==> 3. Building Go standalone binary (${VERSION}, ${TARGET_OS}/${TARGET_ARCH})..."
 (
   cd "${REPO_DIR}/backend"
-  GOOS="${TARGET_OS}" GOARCH="${TARGET_ARCH}" go build -ldflags="-s -w" -o "${OUTPUT_REL}" ./cmd/server
+  GOOS="${TARGET_OS}" GOARCH="${TARGET_ARCH}" go build -ldflags="-s -w" -o "${OUTPUT_ABS}" ./cmd/server
 )
+
+cp -f "${OUTPUT_ABS}" "${BUILD_DIR}/versionradar${EXT}"
 
 BINARY_SIZE="$(du -h "${OUTPUT_ABS}" | awk '{print $1}')"
 echo ""
 echo "✓ Built standalone binary successfully!"
-echo "  Path: ${OUTPUT_ABS}"
-echo "  Size: ${BINARY_SIZE}"
+echo "  Version: ${VERSION}"
+echo "  Path:    ${OUTPUT_ABS}"
+echo "  Alias:   ${BUILD_DIR}/versionradar${EXT}"
+echo "  Size:    ${BINARY_SIZE}"

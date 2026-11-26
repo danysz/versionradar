@@ -7,11 +7,16 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"flag"
 	"io/fs"
 	"log/slog"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/pocketbase/pocketbase"
 	pbcore "github.com/pocketbase/pocketbase/core"
@@ -82,7 +87,9 @@ func CommunitySources() []core.SourcePlugin {
 func New(opts Options) (*pocketbase.PocketBase, *core.Service, error) {
 	app := pocketbase.New()
 	var publicURLFlag string
+	var noOpenFlag bool
 	app.RootCmd.PersistentFlags().StringVar(&publicURLFlag, "public-url", "", "Public URL for webhooks (e.g. https://xyz.trycloudflare.com)")
+	app.RootCmd.PersistentFlags().BoolVar(&noOpenFlag, "no-open", false, "Disable automatically opening the browser on serve")
 
 	encKey := os.Getenv("VR_ENCRYPTION_KEY")
 	if encKey == "" {
@@ -120,13 +127,65 @@ func New(opts Options) (*pocketbase.PocketBase, *core.Service, error) {
 		if publicURLFlag != "" {
 			svc.PublicURL = strings.TrimRight(publicURLFlag, "/")
 		}
-		return se.Next()
+		if err := se.Next(); err != nil {
+			return err
+		}
+		if flag.Lookup("test.v") == nil && !noOpenFlag {
+			go func() {
+				time.Sleep(400 * time.Millisecond)
+				openBrowser(resolveBrowseURL(app, se, svc.PublicURL))
+			}()
+		}
+		return nil
 	})
+	registerBranding(app)
 	svc.Bind(app)
 	if err := RegisterUI(app, opts.CustomUIFS); err != nil {
 		return nil, nil, err
 	}
 	return app, svc, nil
+}
+
+func resolveBrowseURL(app pbcore.App, se *pbcore.ServeEvent, publicURL string) string {
+	base := "http://127.0.0.1:8090"
+	if se != nil && se.Server != nil && se.Server.Addr != "" {
+		host, port, err := net.SplitHostPort(se.Server.Addr)
+		if err == nil {
+			if host == "" || host == "0.0.0.0" || host == "::" {
+				host = "127.0.0.1"
+			}
+			switch port {
+			case "https", "443":
+				base = "https://" + net.JoinHostPort(host, port)
+			case "http":
+				base = "http://" + host
+			default:
+				if port != "" {
+					base = "http://" + net.JoinHostPort(host, port)
+				}
+			}
+		}
+	} else if publicURL != "" {
+		base = strings.TrimRight(publicURL, "/")
+	}
+	count, _ := app.CountRecords(pbcore.CollectionNameSuperusers)
+	if count == 0 {
+		return base + "/_/"
+	}
+	return base + "/"
+}
+
+func openBrowser(url string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	_ = cmd.Start()
 }
 
 // resolveOrGenerateKey loads the persisted base64 encryption key from dataDir/encryption.key,

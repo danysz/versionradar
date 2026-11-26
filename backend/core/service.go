@@ -146,6 +146,15 @@ func (s *Service) Bind(app core.App) {
 	app.OnRecordUpdate("user_plugins").BindFunc(func(e *core.RecordEvent) error {
 		return s.encryptConfig(e.Record, e.Next)
 	})
+
+	app.OnRecordAfterCreateSuccess(core.CollectionNameSuperusers).BindFunc(func(e *core.RecordEvent) error {
+		s.syncSuperuserToUser(e.Record)
+		return e.Next()
+	})
+	app.OnRecordAfterUpdateSuccess(core.CollectionNameSuperusers).BindFunc(func(e *core.RecordEvent) error {
+		s.syncSuperuserToUser(e.Record)
+		return e.Next()
+	})
 }
 
 func (s *Service) pluginVersion(name string) (string, bool) {
@@ -476,7 +485,8 @@ func (s *Service) ensureAdmin() error {
 	if email == "" || pass == "" {
 		return nil
 	}
-	if _, err := s.App.FindAuthRecordByEmail(core.CollectionNameSuperusers, email); err == nil {
+	if existing, err := s.App.FindAuthRecordByEmail(core.CollectionNameSuperusers, email); err == nil {
+		s.syncSuperuserToUser(existing)
 		return nil
 	}
 	col, err := s.App.FindCachedCollectionByNameOrId(core.CollectionNameSuperusers)
@@ -486,29 +496,67 @@ func (s *Service) ensureAdmin() error {
 	r := core.NewRecord(col)
 	r.SetEmail(email)
 	r.SetPassword(pass)
-	return s.App.Save(r)
+	if err := s.App.Save(r); err != nil {
+		return err
+	}
+	s.syncSuperuserToUser(r)
+	return nil
 }
 
-// ensureAuth makes Google the only way to sign in: password auth is off and sign-up is only allowed through OAuth2.
+// syncSuperuserToUser mirrors a superuser's email and password hash into the users auth collection
+// so the admin can log into the VersionRadar dashboard with the same credentials.
+func (s *Service) syncSuperuserToUser(superRecord *core.Record) {
+	if superRecord == nil {
+		return
+	}
+	usersCol, err := s.App.FindCollectionByNameOrId("users")
+	if err != nil {
+		return
+	}
+	email := superRecord.Email()
+	if email == "" {
+		return
+	}
+	hash := superRecord.GetString("password:hash")
+	tokenKey := superRecord.TokenKey()
+
+	user, _ := s.App.FindAuthRecordByEmail("users", email)
+	if user == nil {
+		user = core.NewRecord(usersCol)
+		user.SetEmail(email)
+	}
+	if !user.IsNew() &&
+		user.Verified() &&
+		user.GetString("password:hash") == hash &&
+		(tokenKey == "" || user.TokenKey() == tokenKey) {
+		return
+	}
+	user.SetVerified(true)
+	if hash != "" {
+		user.SetRaw("password", hash)
+	}
+	if tokenKey != "" {
+		user.SetRaw("tokenKey", tokenKey)
+	} else if user.TokenKey() == "" {
+		user.RefreshTokenKey()
+	}
+	_ = s.App.SaveNoValidate(user)
+}
+
+// ensureAuth enables local email/password sign-in and sign-up, and configures Google OAuth2 when credentials are provided.
 func (s *Service) ensureAuth() error {
 	c, err := s.App.FindCollectionByNameOrId("users")
 	if err != nil {
 		return err
 	}
-	dev := os.Getenv("VR_DEV_PASSWORD_AUTH") == "1"
-	c.PasswordAuth.Enabled = dev
-	if dev {
-		c.CreateRule = types.Pointer("")
-	} else {
-		c.CreateRule = types.Pointer(`@request.context = "oauth2"`)
-	}
+	c.PasswordAuth.Enabled = true
+	c.CreateRule = types.Pointer("")
+
 	id, secret := os.Getenv("VR_GOOGLE_CLIENT_ID"), os.Getenv("VR_GOOGLE_CLIENT_SECRET")
 	c.OAuth2.Enabled = id != "" && secret != ""
 	c.OAuth2.Providers = nil
 	if c.OAuth2.Enabled {
 		c.OAuth2.Providers = []core.OAuth2ProviderConfig{{Name: "google", ClientId: id, ClientSecret: secret}}
-	} else {
-		s.App.Logger().Warn("VR_GOOGLE_CLIENT_ID/SECRET not set: nobody can sign in")
 	}
 	return s.App.Save(c)
 }
