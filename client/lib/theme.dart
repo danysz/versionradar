@@ -134,6 +134,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.rocket_launch_outlined,
     Color(0xFFA78BFA),
   ),
+  'neon' => const ProviderMeta(
+    'Neon',
+    'Serverless Postgres branches & ops',
+    Icons.bolt_outlined,
+    Color(0xFF00E599),
+  ),
   'gcp' => const ProviderMeta(
     'Google Cloud',
     'Cloud Build pipelines',
