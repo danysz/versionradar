@@ -146,6 +146,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.change_history_rounded,
     Color(0xFFE2E8F0),
   ),
+  'netlify' => const ProviderMeta(
+    'Netlify',
+    'Site builds & atomic deploys',
+    Icons.layers_outlined,
+    Color(0xFF00C7B7),
+  ),
   'gcp' => const ProviderMeta(
     'Google Cloud',
     'Cloud Build pipelines',
