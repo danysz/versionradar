@@ -19,6 +19,7 @@ import (
 	"github.com/danysz/versionradar/backend/plugins/providers/githubactions"
 	"github.com/danysz/versionradar/backend/plugins/providers/gitlabci"
 	"github.com/danysz/versionradar/backend/plugins/providers/httpprobe"
+	"github.com/danysz/versionradar/backend/plugins/providers/neon"
 	"github.com/danysz/versionradar/backend/plugins/providers/netlify"
 	"github.com/danysz/versionradar/backend/plugins/providers/render"
 	"github.com/danysz/versionradar/backend/plugins/providers/supabase"
@@ -55,6 +56,7 @@ func CommunityProviders() []core.ProviderPlugin {
 		gitlabci.Plugin{},
 		render.Plugin{},
 		supabase.Plugin{},
+		neon.Plugin{},
 	}
 }
 
