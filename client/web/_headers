@@ -1,0 +1,3 @@
+# Always revalidate (ETag makes this cheap) so a new deploy is picked up immediately.
+/*
+  Cache-Control: no-cache

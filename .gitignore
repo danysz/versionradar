@@ -1,0 +1,6 @@
+backend/pb_data/
+client/build/
+client/.dart_tool/
+.env
+*.p8
+client_secret*.json
