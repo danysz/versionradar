@@ -134,6 +134,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.rocket_launch_outlined,
     Color(0xFFA78BFA),
   ),
+  'http_probe' => const ProviderMeta(
+    'HTTP Probe',
+    'Live /version or /health endpoint',
+    Icons.http_rounded,
+    Color(0xFF2DD4BF),
+  ),
   'gcp' => const ProviderMeta(
     'Google Cloud',
     'Cloud Build pipelines',
