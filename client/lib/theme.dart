@@ -164,6 +164,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.precision_manufacturing_outlined,
     Color(0xFFFB923C),
   ),
+  'render' => const ProviderMeta(
+    'Render',
+    'Web services & background workers',
+    Icons.dns_outlined,
+    Color(0xFF46E3B7),
+  ),
   'gcp' => const ProviderMeta(
     'Google Cloud',
     'Cloud Build pipelines',
