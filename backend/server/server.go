@@ -17,6 +17,7 @@ import (
 	"github.com/danysz/versionradar/backend/plugins/providers/googleplay"
 	"github.com/danysz/versionradar/backend/plugins/providers/heroku"
 	"github.com/danysz/versionradar/backend/plugins/providers/httpprobe"
+	"github.com/danysz/versionradar/backend/plugins/providers/vercel"
 	"github.com/danysz/versionradar/backend/sources/git"
 	"github.com/danysz/versionradar/backend/sources/github"
 	"github.com/danysz/versionradar/backend/sources/gitlab"
@@ -43,6 +44,7 @@ func CommunityProviders() []core.ProviderPlugin {
 		appstore.Plugin{},
 		heroku.Plugin{},
 		httpprobe.Plugin{},
+		vercel.Plugin{},
 	}
 }
 
