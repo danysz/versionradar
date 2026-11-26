@@ -134,6 +134,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.rocket_launch_outlined,
     Color(0xFFA78BFA),
   ),
+  'vercel' => const ProviderMeta(
+    'Vercel',
+    'Frontend builds & edge deploys',
+    Icons.change_history_rounded,
+    Color(0xFFE2E8F0),
+  ),
   'gcp' => const ProviderMeta(
     'Google Cloud',
     'Cloud Build pipelines',
