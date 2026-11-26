@@ -17,6 +17,7 @@ import (
 	"github.com/danysz/versionradar/backend/plugins/providers/googleplay"
 	"github.com/danysz/versionradar/backend/plugins/providers/heroku"
 	"github.com/danysz/versionradar/backend/plugins/providers/githubactions"
+	"github.com/danysz/versionradar/backend/plugins/providers/gitlabci"
 	"github.com/danysz/versionradar/backend/plugins/providers/httpprobe"
 	"github.com/danysz/versionradar/backend/plugins/providers/netlify"
 	"github.com/danysz/versionradar/backend/plugins/providers/vercel"
@@ -49,6 +50,7 @@ func CommunityProviders() []core.ProviderPlugin {
 		vercel.Plugin{},
 		netlify.Plugin{},
 		githubactions.Plugin{},
+		gitlabci.Plugin{},
 	}
 }
 

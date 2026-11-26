@@ -158,6 +158,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.play_circle_outline_rounded,
     Color(0xFF60A5FA),
   ),
+  'gitlab_ci' => const ProviderMeta(
+    'GitLab CI',
+    'CI/CD pipelines & jobs',
+    Icons.precision_manufacturing_outlined,
+    Color(0xFFFB923C),
+  ),
   'gcp' => const ProviderMeta(
     'Google Cloud',
     'Cloud Build pipelines',
