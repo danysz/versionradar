@@ -170,6 +170,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.dns_outlined,
     Color(0xFF46E3B7),
   ),
+  'supabase' => const ProviderMeta(
+    'Supabase',
+    'DB migrations & Edge Functions',
+    Icons.storage_rounded,
+    Color(0xFF3ECF8E),
+  ),
   'gcp' => const ProviderMeta(
     'Google Cloud',
     'Cloud Build pipelines',
