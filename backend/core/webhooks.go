@@ -152,6 +152,7 @@ func (s *Service) webhookPlans(e *core.RequestEvent) error {
 		return err
 	}
 	baseURL := s.basePublicURL(e)
+	isLocal := strings.Contains(baseURL, "localhost") || strings.Contains(baseURL, "127.0.0.1") || strings.HasPrefix(baseURL, "http://[::1]")
 	plans := []WebhookStatus{}
 	for _, r := range radars {
 		if st, err := s.planForRadar(baseURL, e.Auth.Id, r, "provider"); err == nil && st != nil {
@@ -162,8 +163,10 @@ func (s *Service) webhookPlans(e *core.RequestEvent) error {
 		}
 	}
 	return e.JSON(http.StatusOK, map[string]any{
-		"plans":  plans,
-		"script": buildFallbackScript(plans),
+		"plans":        plans,
+		"script":       buildFallbackScript(plans),
+		"public_url":   baseURL,
+		"is_localhost": isLocal,
 	})
 }
 

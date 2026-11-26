@@ -4,9 +4,17 @@
 package server
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"errors"
+	"io/fs"
+	"log/slog"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/pocketbase/pocketbase"
+	pbcore "github.com/pocketbase/pocketbase/core"
 
 	"github.com/danysz/versionradar/backend/core"
 	_ "github.com/danysz/versionradar/backend/pb_migrations"
@@ -38,6 +46,7 @@ type Options struct {
 	ExtraNotifiers  []core.NotifierPlugin
 	Entitlements    core.EntitlementChecker
 	PublicURL       string
+	CustomUIFS      fs.FS
 }
 
 // CommunityProviders returns the built-in open-source deployment provider plugins.
@@ -71,7 +80,19 @@ func CommunitySources() []core.SourcePlugin {
 
 // New constructs a configured PocketBase app + core.Service ready to call app.Start().
 func New(opts Options) (*pocketbase.PocketBase, *core.Service, error) {
-	cipher, err := core.NewCipher(os.Getenv("VR_ENCRYPTION_KEY"))
+	app := pocketbase.New()
+	var publicURLFlag string
+	app.RootCmd.PersistentFlags().StringVar(&publicURLFlag, "public-url", "", "Public URL for webhooks (e.g. https://xyz.trycloudflare.com)")
+
+	encKey := os.Getenv("VR_ENCRYPTION_KEY")
+	if encKey == "" {
+		var err error
+		encKey, err = resolveOrGenerateKey(app.DataDir(), app.Logger())
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	cipher, err := core.NewCipher(encKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -85,7 +106,6 @@ func New(opts Options) (*pocketbase.PocketBase, *core.Service, error) {
 		publicURL = os.Getenv("VR_PUBLIC_URL")
 	}
 
-	app := pocketbase.New()
 	svc := &core.Service{
 		App:          app,
 		Cipher:       cipher,
@@ -96,6 +116,44 @@ func New(opts Options) (*pocketbase.PocketBase, *core.Service, error) {
 		Entitlements: opts.Entitlements,
 		PublicURL:    publicURL,
 	}
+	app.OnServe().BindFunc(func(se *pbcore.ServeEvent) error {
+		if publicURLFlag != "" {
+			svc.PublicURL = strings.TrimRight(publicURLFlag, "/")
+		}
+		return se.Next()
+	})
 	svc.Bind(app)
+	if err := RegisterUI(app, opts.CustomUIFS); err != nil {
+		return nil, nil, err
+	}
 	return app, svc, nil
+}
+
+// resolveOrGenerateKey loads the persisted base64 encryption key from dataDir/encryption.key,
+// or generates, persists (0600), and returns a new 32-byte key if none exists yet.
+func resolveOrGenerateKey(dataDir string, logger *slog.Logger) (string, error) {
+	if err := os.MkdirAll(dataDir, 0700); err != nil {
+		return "", err
+	}
+	keyPath := filepath.Join(dataDir, "encryption.key")
+	data, err := os.ReadFile(keyPath)
+	if err == nil {
+		return strings.TrimSpace(string(data)), nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	key := base64.StdEncoding.EncodeToString(raw)
+	if err := os.WriteFile(keyPath, []byte(key), 0600); err != nil {
+		return "", err
+	}
+	if logger != nil {
+		logger.Info("No VR_ENCRYPTION_KEY set: generated and persisted key to " + keyPath)
+	}
+	return key, nil
 }

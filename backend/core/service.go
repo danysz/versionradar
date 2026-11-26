@@ -75,6 +75,16 @@ func (s *Service) Bind(app core.App) {
 	// Fixed 5-minute poll for providers and Git sources.
 	app.Cron().MustAdd("vr-poll", "*/5 * * * *", s.SyncAll)
 
+	// Adaptive active build watcher + immediate startup sync once serving starts.
+	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+		go s.StartAdaptiveWatcher(nil, 10*time.Second)
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			s.SyncAll()
+		}()
+		return se.Next()
+	})
+
 	// A product is a "radar" when plugin_name is set: it follows the provider resource described by target,
 	// and optionally checks the latest expected version from a Git source + VersionStrategy plugin.
 	validateRadar := func(e *core.RecordEvent) error {

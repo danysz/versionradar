@@ -152,7 +152,162 @@ func (s *Service) SyncRadarSource(radar *core.Record) error {
 	return s.App.Save(radar)
 }
 
+// SyncActiveBuilds polls only radars that currently have an in_progress deployment or whose
+// latest Git commit has not yet appeared in their newest deployment.
+func (s *Service) SyncActiveBuilds() (int, error) {
+	activeRadars := map[string]*core.Record{}
+
+	inProgDeps, err := s.App.FindRecordsByFilter(
+		"deployments",
+		"status = {:s}",
+		"",
+		0,
+		0,
+		dbx.Params{"s": StatusInProgress},
+	)
+	if err != nil {
+		return 0, err
+	}
+	for _, d := range inProgDeps {
+		pid := d.GetString("product")
+		if pid == "" {
+			continue
+		}
+		if _, exists := activeRadars[pid]; exists {
+			continue
+		}
+		if r, rerr := s.App.FindRecordById("products", pid); rerr == nil {
+			activeRadars[pid] = r
+		}
+	}
+
+	radarsWithCommit, err := s.App.FindRecordsByFilter("products", "latest_commit != ''", "", 0, 0)
+	if err != nil {
+		return 0, err
+	}
+	for _, r := range radarsWithCommit {
+		if _, exists := activeRadars[r.Id]; exists {
+			continue
+		}
+		if r.GetString("plugin_name") == "" {
+			continue
+		}
+		latestCommit := r.GetString("latest_commit")
+		deps, derr := s.App.FindRecordsByFilter(
+			"deployments",
+			"product = {:p}",
+			"-timestamp",
+			1,
+			0,
+			dbx.Params{"p": r.Id},
+		)
+		if derr != nil {
+			continue
+		}
+		if len(deps) == 0 {
+			activeRadars[r.Id] = r
+			continue
+		}
+		dep := deps[0]
+		depCommit := dep.GetString("commit_sha")
+		if commitMatches(depCommit, latestCommit) {
+			continue
+		}
+		if depCommit == "" && VersionsMatch(dep.GetString("version"), "", r.GetString("latest_version"), latestCommit) {
+			continue
+		}
+		activeRadars[r.Id] = r
+	}
+
+	if len(activeRadars) == 0 {
+		return 0, nil
+	}
+
+	type groupKey struct {
+		user   string
+		plugin string
+	}
+	groups := map[groupKey][]*core.Record{}
+	order := []groupKey{}
+	for _, r := range activeRadars {
+		pn := r.GetString("plugin_name")
+		uid := r.GetString("user")
+		if pn == "" || uid == "" {
+			continue
+		}
+		if _, ok := s.Registry.Get(pn); !ok {
+			continue
+		}
+		k := groupKey{user: uid, plugin: pn}
+		if _, exists := groups[k]; !exists {
+			order = append(order, k)
+		}
+		groups[k] = append(groups[k], r)
+	}
+
+	total := 0
+	var firstErr error
+	for _, k := range order {
+		up, uerr := s.App.FindFirstRecordByFilter(
+			"user_plugins",
+			"user = {:u} && plugin_name = {:n} && is_enabled = true",
+			dbx.Params{"u": k.user, "n": k.plugin},
+		)
+		if uerr != nil {
+			continue
+		}
+		n, perr := s.pollPluginRadars(up, groups[k])
+		total += n
+		if perr != nil && !errors.Is(perr, errNoCreds) {
+			s.App.Logger().Warn("active build sync failed", "user", k.user, "plugin", k.plugin, "err", perr)
+			if firstErr == nil {
+				firstErr = perr
+			}
+		}
+	}
+	return total, firstErr
+}
+
+func commitMatches(depCommit, latestCommit string) bool {
+	if depCommit == "" || latestCommit == "" {
+		return false
+	}
+	return depCommit == latestCommit || shaPrefixMatch(depCommit, latestCommit)
+}
+
+// StartAdaptiveWatcher runs a ticker on the given interval (defaulting to 10s when <= 0)
+// that polls active builds via SyncActiveBuilds until stopCh is closed.
+func (s *Service) StartAdaptiveWatcher(stopCh <-chan struct{}, interval time.Duration) {
+	if interval <= 0 {
+		interval = 10 * time.Second
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stopCh:
+			return
+		case <-ticker.C:
+			if _, err := s.SyncActiveBuilds(); err != nil {
+				s.App.Logger().Warn("adaptive watcher sync failed", "err", err)
+			}
+		}
+	}
+}
+
 func (s *Service) syncOne(up *core.Record) (int, error) {
+	if _, ok := s.Registry.Get(up.GetString("plugin_name")); !ok {
+		return 0, nil
+	}
+	// Targets are the user's radars for this plugin: each radar's target fields plus its id as "product".
+	radars, err := s.App.FindAllRecords("products", dbx.HashExp{"user": up.GetString("user"), "plugin_name": up.GetString("plugin_name")})
+	if err != nil {
+		return 0, err
+	}
+	return s.pollPluginRadars(up, radars)
+}
+
+func (s *Service) pollPluginRadars(up *core.Record, radars []*core.Record) (int, error) {
 	p, ok := s.Registry.Get(up.GetString("plugin_name"))
 	if !ok {
 		return 0, nil
@@ -166,11 +321,6 @@ func (s *Service) syncOne(up *core.Record) (int, error) {
 	}
 	cfg := map[string]any{}
 	if err := json.Unmarshal([]byte(plain), &cfg); err != nil {
-		return 0, err
-	}
-	// Targets are the user's radars for this plugin: each radar's target fields plus its id as "product".
-	radars, err := s.App.FindAllRecords("products", dbx.HashExp{"user": up.GetString("user"), "plugin_name": up.GetString("plugin_name")})
-	if err != nil {
 		return 0, err
 	}
 	targets := []any{}

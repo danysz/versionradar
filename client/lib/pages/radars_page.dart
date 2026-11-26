@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -33,6 +34,7 @@ class _RadarsPageState extends State<RadarsPage> {
   RadarHealth? _healthFilter;
   UnsubscribeFunc? _unsubDeps;
   UnsubscribeFunc? _unsubRadars;
+  Timer? _activeBuildTimer;
 
   @override
   void initState() {
@@ -42,9 +44,33 @@ class _RadarsPageState extends State<RadarsPage> {
 
   @override
   void dispose() {
+    _activeBuildTimer?.cancel();
     _unsubDeps?.call();
     _unsubRadars?.call();
     super.dispose();
+  }
+
+  bool get _hasActiveBuilds {
+    const activeStages = {
+      'in_progress',
+      'queued',
+      'pending',
+      'initialize',
+      'clone_repo',
+      'building',
+      'working',
+      'processing',
+      'preparing',
+      'releasing',
+      'deploying',
+    };
+    return _latest.values.any((d) {
+      final status = d.getStringValue('status');
+      if (status == 'in_progress') return true;
+      if (status == 'success' || status == 'failed') return false;
+      final stage = d.getStringValue('stage').trim().toLowerCase();
+      return activeStages.contains(stage);
+    });
   }
 
   void _trackDep(RecordModel d) {
@@ -90,6 +116,15 @@ class _RadarsPageState extends State<RadarsPage> {
         });
       });
       await _load();
+      if (mounted && _radars.isNotEmpty) {
+        unawaited(_sync(silent: true));
+      }
+      _activeBuildTimer?.cancel();
+      _activeBuildTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+        if (mounted && _hasActiveBuilds) {
+          unawaited(_sync(silent: true));
+        }
+      });
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
@@ -116,11 +151,16 @@ class _RadarsPageState extends State<RadarsPage> {
     });
   }
 
-  Future<void> _sync() async {
+  Future<void> _sync({bool silent = false}) async {
+    if (_syncing) return;
     setState(() => _syncing = true);
     try {
       final res = await syncNow();
       if (!mounted) return;
+      if (silent) {
+        await _load();
+        return;
+      }
       if (res.problems.isEmpty) {
         showAppToast(context, res.summary);
       } else {
@@ -133,7 +173,7 @@ class _RadarsPageState extends State<RadarsPage> {
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !silent) {
         showAppToast(context, DisplayFormat.friendlyError(e), isError: true);
       }
     } finally {

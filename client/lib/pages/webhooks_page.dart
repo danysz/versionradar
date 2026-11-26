@@ -21,6 +21,8 @@ class _WebhooksPageState extends State<WebhooksPage>
   late final TabController _tabs = TabController(length: 2, vsync: this);
   List<Map<String, dynamic>> _plans = [];
   String _script = '';
+  bool _isLocalhost = false;
+  String _publicUrl = '';
   bool _loading = true;
   bool _busyAll = false;
   final Set<String> _busyKeys = {};
@@ -57,6 +59,8 @@ class _WebhooksPageState extends State<WebhooksPage>
       setState(() {
         _plans = filtered;
         _script = (res['script'] as String?) ?? '';
+        _isLocalhost = res['is_localhost'] == true;
+        _publicUrl = (res['public_url'] as String?) ?? '';
         _loading = false;
       });
     } catch (e) {
@@ -319,11 +323,98 @@ class _WebhooksPageState extends State<WebhooksPage>
               ),
             ),
           )
-        : TabBarView(
-            controller: _tabs,
-            children: [_buildPlansList(), _buildScriptTab()],
+        : Column(
+            children: [
+              if (_isLocalhost) _buildLocalhostBanner(),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabs,
+                  children: [_buildPlansList(), _buildScriptTab()],
+                ),
+              ),
+            ],
           ),
   );
+
+  Widget _buildLocalhostBanner() {
+    const tunnelCmd = 'cloudflared tunnel --url http://localhost:8080';
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 920),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.amber.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.amber.withValues(alpha: 0.35)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 18,
+                      color: AppColors.amber,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Localhost Mode (Adaptive Polling Active)',
+                                  style: TextStyle(
+                                    color: AppColors.amber,
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              if (_publicUrl.isNotEmpty)
+                                Text(
+                                  _publicUrl,
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 11.5,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'External cloud services (GitHub, Vercel, Cloudflare) cannot POST directly to localhost. VersionRadar automatically uses fast 10-second polling for active builds. For instant cloud webhooks, expose your port with a free Cloudflare Tunnel:',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 12.5,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const CompactCopyRow(
+                  label: 'Command',
+                  value: tunnelCmd,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildPlansList() {
     if (_plans.isEmpty) {

@@ -1,5 +1,7 @@
 backend/pb_data/
 backend/bin/
+backend/server/dist/*
+!backend/server/dist/index.html
 client/build/
 client/.dart_tool/
 .env
