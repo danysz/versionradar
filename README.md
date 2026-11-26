@@ -5,7 +5,7 @@
 VersionRadar is an open-source, multi-tenant deployment and version tracker built with **Go + PocketBase** and **Flutter**. Connect your cloud providers and Git repositories with read-only credentials (AES-256-GCM encrypted) to see live build progress, deployment status, and whether what is deployed matches your latest code in Git.
 
 ## Repository Layout
-- `backend/` — Go module (`github.com/danysz/versionradar/backend`) containing `core/`, `server/`, `pb_migrations/`, Community `plugins/`, Git `sources/`, and pluggable `strategies/`.
+- `backend/` — Go module (`github.com/danysz/versionradar/backend`) containing `core/`, `server/`, `pb_migrations/`, Community `plugins/providers/` & `plugins/notifiers/`, Git `sources/`, and pluggable `strategies/`.
 - `client/` — Flutter app (Web, macOS, iOS, Android) that dynamically adapts to all registered plugins.
 - `docs/` — Provider credential guide ([docs/credentials.md](docs/credentials.md)) and Open-Core architecture ([docs/open-core.md](docs/open-core.md)).
 
