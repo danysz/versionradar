@@ -170,6 +170,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.merge_type_rounded,
     Color(0xFFFB923C),
   ),
+  'gitlab_ci' => const ProviderMeta(
+    'GitLab CI',
+    'CI/CD pipelines & jobs',
+    Icons.precision_manufacturing_outlined,
+    Color(0xFFFB923C),
+  ),
   'git' => const ProviderMeta(
     'Git (HTTPS)',
     'Any HTTPS repo via Smart HTTP',
