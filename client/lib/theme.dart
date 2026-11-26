@@ -164,6 +164,12 @@ ProviderMeta providerMeta(String name) => switch (name.toLowerCase()) {
     Icons.code_rounded,
     Color(0xFFE2E8F0),
   ),
+  'github_actions' => const ProviderMeta(
+    'GitHub Actions',
+    'CI/CD workflow runs',
+    Icons.play_circle_outline_rounded,
+    Color(0xFF60A5FA),
+  ),
   'gitlab' => const ProviderMeta(
     'GitLab',
     'Tags, branches & version files',
